@@ -40,7 +40,7 @@ int main (int nargs, char **args)
 		{
 			for (int j = 0; j < N; ++j)
 			{
-				if(j< 4) input[i][j] = 10;
+				if(j< 4) input[i][j] = i*j/10;
 				//printf("%f ", input[i][j]);
 			}
 			//printf("\n");
@@ -90,13 +90,28 @@ int main (int nargs, char **args)
 	// For example, compare the content of array ’output’ with that is
 	// produced by the sequential function single_layer_convolution
 	
+	float **compare_out, **intermediate=NULL;	
+	allocate(M-K1+1,N-K1+1,&intermediate);
+	allocate(M-K1-K2+2,N-K1-K2+2,&compare_out);
 
+	single_layer_convolution(M,N,input,K1,kernel1,intermediate);
+	single_layer_convolution(M-K1+1,N-K1+1,intermediate,K2,kernel2,compare_out);
+	
+	for(int i =0;i < M-K1-K2+2;i++){
+		for(int j =0;j < N-K1-K2+2;j++){
+			if(compare_out[i][j] !=	output[i][j]){
+				printf("SHIT");
+			}
+			else{
+				printf("yes");
+			}
+		}
+	}	
 
-	}
-
-	if (my_rank==0){
-		deallocate(&input);
-		deallocate(&output);
+	deallocate(&intermediate);
+	deallocate(&compare_out);
+	deallocate(&input);
+	deallocate(&output);
 	}
     
     deallocate(&kernel1);
@@ -278,7 +293,7 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 
 		for (int i = 0; i < size; ++i)
 		{
-			printf("- %d -", counts[i]);
+			printf("count - %d -", counts[i]);
 			
 		}printf("\n");
 		printf("m:%d rank:%d\n", my_M,my_rank);
