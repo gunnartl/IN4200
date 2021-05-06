@@ -40,7 +40,7 @@ int main (int nargs, char **args)
 		{
 			for (int j = 0; j < N; ++j)
 			{
-				if(j< 4) input[i][j] = i*j/10;
+				if(j< 4) input[i][j] = 10;
 				//printf("%f ", input[i][j]);
 			}
 			//printf("\n");
@@ -100,10 +100,7 @@ int main (int nargs, char **args)
 	for(int i =0;i < M-K1-K2+2;i++){
 		for(int j =0;j < N-K1-K2+2;j++){
 			if(compare_out[i][j] !=	output[i][j]){
-				printf("SHIT");
-			}
-			else{
-				printf("yes");
+				printf("This is a terrible program");
 			}
 		}
 	}	
@@ -159,16 +156,21 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 	int *displacements = (int*)calloc(size,sizeof(int));
 
 	//calculates nummber of floats for each process 
+	printf(" HER KOMMER COUNTS \n");
 	for (int i = 0; i < size; ++i)
 	{
 		counts[i] = (i<n_more)? (n_each + overlap_size1+1)*N:(n_each + overlap_size1)*N; //could gather my_M but this is faster
+		printf(" %d \n", counts[i]);
 	}
 	
 	//sets displacements witch is lenght of counts[i-1] - overlappsize
+	printf(" HER KOMMER DISPS \n");
 	for (int i = 1; i < size; ++i)
 	{
 		displacements[i] = displacements[i-1]+counts[i-1]-overlap_size1*N;
+		printf(" %d \n", displacements[i]);
 	}
+
 	//scatters input to procs with sizes and sisplacements already calculated 
     MPI_Scatterv(&input[0][0],counts,displacements,MPI_FLOAT,&my_input[0][0],my_M*N,MPI_FLOAT,0,MPI_COMM_WORLD);
 
@@ -280,9 +282,9 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 		{
 			counts[i] = (i<n_more)? (n_each+1)*N:n_each*N;
 		}
-		counts[size-1] = counts[size-1]-(K1-K2+1)*N; //last prosess is stuck with all the overlapp
+		counts[size-1] = counts[size-1]-(K2-1)*N; //last prosess is stuck with all the overlapp
 		//i guess this could have been distributed, but as the kernels are much smaller than N and M
-		// i guess it wont be an issue. 
+		// i guess it wont be a large issue. 
 
 		
 
@@ -327,92 +329,3 @@ void single_layer_convolution (int M, int N, float **input, int K, float **kerne
 		}
 
 	}
-
-void MPI_double_layer_convolution_double_overlap (int M, int N, float **input, int K1, float **kernel1, int K2, float **kernel2,float **output){
-	int my_rank,size;
-	MPI_Comm_rank (MPI_COMM_WORLD, &my_rank);
-	MPI_Comm_size (MPI_COMM_WORLD, &size);
-	int my_M;
-	int overlap_size = K1-1;    // number of overlapping rows
-	float **my_input,**my_output;
-    
-    my_M = (my_rank<(M-K1+1)%size)? (M-K1+1)/size + overlap_size+1:(M-K1+1)/size + overlap_size;
-
-    allocate(my_M,N,&my_input);
-    allocate(my_M-overlap_size,N,&my_output);
-	//first convolution
-	if(my_rank == 0){
-
-	int n_each = (M-K1+1)/size; // lines each
-	int n_more = (M-K1+1)%size; //number of procs getting one more line
-
-	int *counts = (int*)calloc(size,sizeof(int));
-	int *displacements = (int*)calloc(size,sizeof(int));
-
-	for (int i = 0; i < size; ++i)
-	{
-		counts[i] = (n_each + overlap_size)*N;
-		if (i<n_more)
-		{
-			counts[i]+=N;
-		}
-	}
-
-	for (int i = 1; i < size; ++i)
-	{
-		displacements[i] = displacements[i-1]+counts[i-1]-overlap_size*N;
-	}
-    
-    for (int i = 0; i < size; ++i)
-    {
-    	printf("count %d\n",counts[i]);
-    	printf("%d tallllet %f\n",my_rank,input[0][0]);
-    }
-    MPI_Scatterv(&input[0][0],counts,displacements,MPI_FLOAT,&my_input[0][0],my_M*N,MPI_FLOAT,0,MPI_COMM_WORLD);
-   	for (int i = 0; i < my_M; ++i)
-		{
-			for (int j = 0; j < N; ++j)
-			{
-				printf("%f + ", my_input[i][j]);
-			}
-			printf("\n");
-		}
-		
-	}
-
-	if (my_rank>0)
-	{
-		MPI_Scatterv(NULL,NULL,NULL,NULL,&my_input[0][0],my_M*N,MPI_FLOAT,0,MPI_COMM_WORLD);
-
-/*		for (int i = 0; i < my_M; ++i)
-		{
-			for (int j = 0; j < N; ++j)
-			{
-				printf("%f - ", my_input[i][j]);
-			}
-			printf("\n");
-		}
-	*/	
-	}
-
-	// all procs
-	MPI_Barrier(MPI_COMM_WORLD);
-	single_layer_convolution(my_M,N,my_input,K1,kernel1,my_output);
-
-	for (int i = 0; i < my_M-K1+1; ++i)
-		{
-			for (int j = 0; j < N-K1+1; ++j)
-			{
-				printf("%f ",my_output[i][j]);
-			}
-			printf(" %d \n",my_rank);
-		}
-
-
-	//my_input = my_output;
-
-
-
-	deallocate(&my_input);
-	deallocate(&my_output);
-}
