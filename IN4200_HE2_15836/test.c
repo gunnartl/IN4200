@@ -75,8 +75,19 @@ int main (int nargs, char **args)
 
 
 	// parallel computation of a double-layer convolution
+
+	double start,stop;
+	start= MPI_Wtime();
+	
+	
 	MPI_double_layer_convolution (M, N, input, K1, kernel1,K2, kernel2, output);
+	stop = MPI_Wtime()-start;
+    if (my_rank==0){
+	printf("parallel:  %f s\n", stop);
+	}
+
 	if (my_rank==0) {
+	/*
 	for (int i = 0; i < M-K1-K2+2; ++i)
 		{
 			for (int j = 0; j < N-K1-K2+2; ++j)
@@ -84,7 +95,7 @@ int main (int nargs, char **args)
 				printf("%f ",output[i][j]);
 			}
 			printf("\n");
-		}
+		}*/
 	// For example, compare the content of array ’output’ with that is
 	// produced by the sequential function single_layer_convolution
 	
@@ -92,9 +103,15 @@ int main (int nargs, char **args)
 	allocate2D(M-K1+1,N-K1+1,&intermediate);
 	allocate2D(M-K1-K2+2,N-K1-K2+2,&compare_out);
 
+
+	double start,stop;
+	start= MPI_Wtime();
 	single_layer_convolution(M,N,input,K1,kernel1,intermediate);
 	single_layer_convolution(M-K1+1,N-K1+1,intermediate,K2,kernel2,compare_out);
-	
+	stop = MPI_Wtime()-start;
+	printf("seriall:  %f s\n", stop);
+
+
 	for(int i =0;i < M-K1-K2+2;i++){
 		for(int j =0;j < N-K1-K2+2;j++){
 			if(compare_out[i][j] !=	output[i][j]){
