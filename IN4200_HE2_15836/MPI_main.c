@@ -1,4 +1,4 @@
-#include "test.h"
+#include "MPI_main.h"
 
 int main (int nargs, char **args)
 {

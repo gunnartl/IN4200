@@ -59,7 +59,7 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 	my_M = (my_rank==size-1)?my_M - K1+1 : my_M - K1+1+overlap_size2;
 	N = N - K1+1;
 	deallocate2D(&my_input);
-	allocate2D(my_M,N,&my_input);
+	allocate2D(my_M,N,&my_input); //her kan jeg lage en intermediate-array som har disse dimensjonene og bruke den istedenfor output. 
 	
 
 	if(my_rank==size-1){
