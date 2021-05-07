@@ -30,7 +30,7 @@ int main (int nargs, char **args)
 		{
 			for (int j = 0; j < N; ++j)
 			{
-				if(j< 4) input[i][j] = 10;
+				if(j<N/2) input[i][j] = i*j/.3;
 				//printf("%f ", input[i][j]);
 			}
 			//printf("\n");
@@ -74,7 +74,7 @@ int main (int nargs, char **args)
 	start= MPI_Wtime();
 	
 	
-	MPI_double_layer_convolution (M, N, input, K1, kernel1,K2, kernel2, output);
+	MPI_double_layer_convolution(M, N, input, K1, kernel1,K2, kernel2, output);
 	pstop = MPI_Wtime()-start;
     if (my_rank==0){
 	printf("parallel:  %f s\n", pstop);
@@ -101,6 +101,14 @@ int main (int nargs, char **args)
 				testvariable ++;
 			}
 		}
+	}
+
+	if (testvariable != 0)
+	{
+		printf("Error in double convolution \n");
+	}
+	else{
+		printf("Double convolution executed successfully \n");
 	}
 
 	deallocate2D(&intermediate);
