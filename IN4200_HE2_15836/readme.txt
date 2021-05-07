@@ -18,10 +18,3 @@ Hemmelig@Abel:~/Documents/in4200/IN4200_HE2_15836$ mpirun --use-hwthread-cpus -n
 Beeing that we can assume K1 and K2 << than M and P i have not made any safeguards for dealing with wierd choises of procs, and viarables M,N,K1 and K2. So the program will fail with for instance huge filters on a small matrix
 
 I ahve also made more *.c files than specified in the exam. this is because i made functions of allocating and deallocating and the convolution-operation itself. I found this to be cleaner.
-
-
-i have had trouble running on the ifi-computers but it runs on my laptop with these versions: 
-
-gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
-mpirun (Open MPI) 4.0.3
-mpiexec (OpenRTE) 4.0.3
