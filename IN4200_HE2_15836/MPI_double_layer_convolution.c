@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **kernel1, int K2, float **kernel2,float **output){
+void MPI_double_layer_convolution(int M, int N, float **input, int K1, float **kernel1, int K2, float **kernel2,float **output){
 	/*
 	function to perform a parallelized double convolution on a MxN matrix input with two kernels of size K1 and K2
 	*/
@@ -11,14 +11,14 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 	int my_M;
 	int overlap_size1 = K1-1;    // number of overlapping rows
 	int overlap_size2 = K2-1;
-	float **my_input,**my_output;
+	float **my_input,**my_output,**my_intermediate;
     
     //sets the nummber of rows for all procs. integerdivision of rows, splits remainder of k between k first processes. and adds overlap
     // using the size of M after one convolution to ensure rather equal distribution of workload
     my_M = (my_rank<(M-K1+1)%size)? (M-K1+1)/size + overlap_size1+1 :(M-K1+1)/size + overlap_size1;
 
     allocate2D(my_M,N,&my_input);
-    allocate2D(my_M-overlap_size1,N-K1+1,&my_output);
+    allocate2D(my_M-overlap_size1+overlap_size2,N-K1+1,&my_intermediate);
 	//first convolution
 	if(my_rank == 0){
 
@@ -53,34 +53,12 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 
 	// all procs
 	//Im using the function given in the exam-text. The alternative is just to copypaste it, and this leaves a much cleaner code:
-	single_layer_convolution(my_M,N,my_input,K1,kernel1,my_output);
+	single_layer_convolution(my_M,N,my_input,K1,kernel1,my_intermediate);
 
 	//allocates room for the second input witch is the size of the last input - K1+1, pluss an overlapp for all other processes than the last
 	my_M = (my_rank==size-1)?my_M - K1+1 : my_M - K1+1+overlap_size2;
 	N = N - K1+1;
 	deallocate2D(&my_input);
-	allocate2D(my_M,N,&my_input); //her kan jeg lage en intermediate-array som har disse dimensjonene og bruke den istedenfor output. 
-	
-
-	if(my_rank==size-1){
-		for (int i = 0; i < my_M; ++i){
-			for (int j = 0; j < N; ++j)
-			{
-				my_input[i][j] = my_output[i][j];
-			}
-	}
-	}
-	else{
-		for (int i = 0; i < my_M-overlap_size2; ++i)
-		{
-			for (int j = 0; j < N; ++j)
-			{
-				my_input[i][j] = my_output[i][j];
-			}
-	}
-	}
-	deallocate2D(&my_output);
-	allocate2D(my_M-overlap_size2, N-overlap_size2,&my_output);
 
 
 	// sending and recieving overlaps, only sending upwards leaving process size-1 a bit less work
@@ -88,22 +66,23 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 
 	if(my_rank == 0){
 		// proc 0 only recieving
-		MPI_Recv(&my_input[my_M-overlap_size2][0], N*overlap_size2,MPI_FLOAT, 1, my_rank+1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+		MPI_Recv(&my_intermediate[my_M-overlap_size2][0], N*overlap_size2,MPI_FLOAT, 1, my_rank+1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
 	}
 	else if (my_rank == size-1){
 		//last proc only sending
-		MPI_Send(&my_input[0][0], N*overlap_size2,MPI_FLOAT,my_rank-1,my_rank,MPI_COMM_WORLD);
+		MPI_Send(&my_intermediate[0][0], N*overlap_size2,MPI_FLOAT,my_rank-1,my_rank,MPI_COMM_WORLD);
 	}
 
 	else {
 		// all others sending and recieving
-	    MPI_Sendrecv(&my_input[0][0], N*overlap_size2,MPI_FLOAT,my_rank-1,my_rank,&my_input[my_M-overlap_size2][0],N*overlap_size2,MPI_FLOAT,my_rank+1,my_rank+1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+	    MPI_Sendrecv(&my_intermediate[0][0], N*overlap_size2,MPI_FLOAT,my_rank-1,my_rank,&my_intermediate[my_M-overlap_size2][0],N*overlap_size2,MPI_FLOAT,my_rank+1,my_rank+1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     }
 
 
     //second convolution
-	single_layer_convolution(my_M,N,my_input,K2,kernel2,my_output); 
-
+    allocate2D(my_M-overlap_size2, N-overlap_size2,&my_output);
+	single_layer_convolution(my_M,N,my_intermediate,K2,kernel2,my_output); 
+	deallocate2D(&my_intermediate);
 
 	//update M and N for gathering
 	my_M = my_M-K2+1;
@@ -145,8 +124,6 @@ void MPI_double_layer_convolution (int M, int N, float **input, int K1, float **
 		MPI_Gatherv(&my_output[0][0],my_M*N,MPI_FLOAT,NULL,NULL,NULL,MPI_FLOAT,0,MPI_COMM_WORLD);
 	}
 	
-	
-	
-	deallocate2D(&my_input);
+
 	deallocate2D(&my_output);
 }
